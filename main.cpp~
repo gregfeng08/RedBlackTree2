@@ -1,0 +1,224 @@
+#include <iostream>
+#include "Node.h"
+#include <fstream>
+#include <cstring>
+#include <cstdlib>
+
+using namespace std;
+void rotateLeft(Node*&, Node*&);
+void rotateRight(Node*&, Node*&);
+void addNode(Node*&, Node*);
+void insert(Node*&, int);
+void rule1(Node*&);
+void rule2();
+void rule3(Node*&, Node* &);
+void rule4part1(Node*&, Node* &);
+void rule4part2(Node *&, Node*&);
+void applyRules(Node*&, Node*&);
+void traverse(Node*, int);
+
+
+int main(){
+	//declare head
+	Node* head = NULL;
+	char inType[100];
+	char input[100];
+	//ask for input type
+
+	cout<<"Type (F) for file input and (M) for manual input"<<endl;
+	cin>>inType;
+	cin.ignore();
+	//if file input
+	if(strcmp(inType, "F") == 0){
+		//read from file
+		cout<<"Input the file name"<<endl;
+		char fileName[100];
+		cin.getline(fileName, sizeof(fileName));
+		ifstream fileStream;
+		fileStream.open(fileName);
+		if(fileStream){
+			fileStream.getline(input, sizeof(input));
+		}
+		//if file not found
+		else{
+			cout<<"File does not exist"<<endl;
+		}
+	}
+	//manual input	
+	else if(strcmp(inType, "M") == 0){
+		cout<<"Enter the array split by spaces"<<endl;
+		cin.getline(input, 100);
+	}
+	//split by space
+	char* list = strtok(input, " ");
+	while(list){
+		//add node
+		insert(head, atoi(list));
+		list = strtok(NULL, " ");
+	}
+	while(true){
+		cout<<"Type ADD to add, PRINT to print, SEARCH to search for a value, QUIT to quit, and DELETE to delete a node"<<endl;
+		char* input = new char();
+		cin.getline(input, sizeof(input));
+		for(int i = 0; i<sizeof(input); i++){
+			input[i] = toupper(input[i]);
+		}
+		//Add a node
+		if(strcmp(input, "ADD") == 0){
+			int val;
+			cout<<"Enter the val you want to add: ";
+			cin>>val;
+			cin.ignore();
+			insert(head, val);
+		}	
+		//display tree
+		else if(strcmp(input, "PRINT") == 0){
+			traverse(head, 0);
+		}
+		else if(strcmp(input, "QUIT") == 0){
+			return 0;
+		}
+		cout<<endl<<"__________________________________________________________________________________________________"<<endl;
+	}
+}
+void insert(Node* &head, int val){
+	//create a node with the value and add it to the tree
+	Node* n = new Node(val);
+	addNode(head, n);
+	//repair the tree
+	applyRules(n, head);
+}
+void addNode(Node* &head, Node* n){
+	//if head is NULL declare it
+	if(head == NULL){
+		head = n;
+		return;
+	}
+	//the input val is larger then head
+	if(head->getKey()<n->getKey()){
+		//if we are at the base of the tree, add the node to the right of the current node
+		if(head->getRight() == NULL){
+			head->setRight(n);
+			head->getRight()->setParent(head);
+			return;
+		}
+		//else recursivly traverse right
+		else{
+			Node* right = head->getRight();
+			addNode(right, n);
+		}	
+	}
+	//if input val is smaller then head
+	else{
+		//if we are at the end of the tree, add the node to the left of the current node
+		if(head->getLeft() == NULL){
+			head->setLeft(n);
+			head->getLeft()->setParent(head);
+			return;
+		}
+		//otherwise traverse left
+		else{
+			Node* left = head->getLeft();
+			addNode(left, n);
+		}
+	}
+}
+//psudo code from https://en.wikipedia.org/wiki/Red-black_tree
+void applyRules(Node* &n, Node* &head){
+	//if it is the root case
+	if(n->getParent() == NULL){
+		rule1(n);
+	}
+	//if the parent is red, do nothing
+	else if(n->getParent()->getColor() == 2){
+		rule2();	
+	}
+	//if the uncle is red
+	else if (n->getUncle() != NULL && n->getUncle()->getColor() == 1){
+		rule3(n, head);
+	}
+	//otherwise
+	else{
+		rule4part1(n, head);
+	}
+
+}
+//set color to reed
+void rule1(Node* &n){
+	n->setColor(2);
+}
+void rule2(){
+	return;
+}
+void rule3(Node* &n, Node* &head){
+	//set color of parent an uncle to black
+	n->getParent()->setColor(2);
+	n->getUncle()->setColor(2);
+	//set color of grandparent to red
+	n->getGrandparent()->setColor(1);
+	//rerun repair tree with grandparent
+	Node* gp = n->getGrandparent();
+	applyRules(gp, head);
+}
+void rule4part1(Node* &n, Node* &head){
+	Node* p = n->getParent();
+	Node* g = n->getGrandparent();
+	//if the current node is on the right of parent and the parent is on the left of gp
+	if (n == p->getRight() && p == g->getLeft()) {
+		//rotate tree left
+		p->rotateLeft();
+		cout<<"test"<<endl;
+		n = n->getLeft();
+	} 
+	//if the current node is on the left of parent and the parent is on the right of gp
+	else if (n == p->getLeft() && p == g->getRight()) {
+		p->rotateRight();
+		n = n->getRight();
+	}
+	rule4part2(n, head);
+}
+void rule4part2(Node* &n, Node* &head){
+	Node* p = n->getParent();
+	Node* g = n->getGrandparent();
+	//if the node is on the left
+	if (n == p->getLeft()) {
+		//rotate right
+		g->rotateRight();
+	} 
+	//if the node is on the right
+	else {
+		//rotate left
+		g->rotateLeft();
+	}
+	//if it is the root case, set head to parent
+	if(g == head) head = p;
+	//set parent color to black and grandparent color to red
+	p->setColor(2);
+	g->setColor(1);
+}
+
+//infix traversal
+void traverse(Node* head, int depth){
+	//recursivly go to the right branch
+  if(head == NULL) {
+    return;
+  }
+  if(head->getRight() != NULL) {
+    traverse(head->getRight(), depth+1);
+  }
+  //print out space for formating
+  for (int i = 0; i < depth; i++) {
+    cout << "      ";
+  }
+  //depending on the color, print a different color
+  if(head->getColor() == 1) {
+    cout <<"\033[1;31m"<<head->getKey()<<"\033[0m"<<endl;
+  }
+  else {
+    cout<<"\033[1;30m"<<head->getKey()<<"\033[0m"<<endl;
+  }
+  //recursivly go to the left branch
+  if(head->getLeft() != NULL) {
+    traverse(head->getLeft(), depth+1);
+  }
+}
